@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human Detection with Text-to-Speech</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+</head>
+<body>
+    <video id="video" width="640" height="480" autoplay></video>
+    <button id="pauseButton" onclick="toggleCamera()">Pause</button>
+    <button id="continueButton" onclick="toggleCamera()">Continue</button>
+
+    <script>
+        let cameraPaused = false;
+        let videoStream;
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then((stream) => {
+                videoStream = stream;
+                document.getElementById('video').srcObject = stream;
+
+                const runObjectDetection = async () => {
+                    const video = document.getElementById('video');
+                    const model = await cocoSsd.load();
+
+                    const detect = async () => {
+                        if (!cameraPaused) {
+                            const predictions = await model.detect(video);
+
+                            predictions.forEach(obj => {
+                                if (obj.class === 'person') {
+                                    speakWithLimit("Hi! Welcome to our booth, let's play!", 4);
+                                }
+                            });
+                        }
+
+                        requestAnimationFrame(detect);
+                    };
+
+                    detect();
+                };
+
+                video.addEventListener('loadeddata', runObjectDetection);
+            })
+            .catch((error) => {
+                console.error('Error accessing webcam:', error);
+            });
+
+        const speakWithLimit = (text, limitInSeconds) => {
+            const synth = window.speechSynthesis;
+            const utterance = new SpeechSynthesisUtterance(text);
+
+            synth.speak(utterance);
+
+            setTimeout(() => {
+                synth.cancel();
+            }, limitInSeconds * 1000);
+        };
+
+        const toggleCamera = () => {
+            const video = document.getElementById('video');
+            if (cameraPaused) {
+                video.srcObject = videoStream;
+                document.getElementById('pauseButton').disabled = false;
+                document.getElementById('continueButton').disabled = true;
+            } else {
+                video.srcObject = null;
+                document.getElementById('pauseButton').disabled = true;
+                document.getElementById('continueButton').disabled = false;
+            }
+
+            cameraPaused = !cameraPaused;
+        };
+    </script>
+</body>
+</html>
